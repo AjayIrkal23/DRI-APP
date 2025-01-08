@@ -1,9 +1,9 @@
 import React from "react";
-import { Layout, Image } from "antd";
+import { Layout, Image, Button } from "antd";
 
 const { Header } = Layout;
 
-const Navbar = () => {
+const Navbar = ({ isAutoScroll, setIsAutoScroll }) => {
   return (
     <Header
       className="h-auto flex !justify-between !items-center py-1 bg-[whitesmoke]"
@@ -32,6 +32,20 @@ const Navbar = () => {
           }}
         >
           DRI Dashboard
+          <div>
+            {" "}
+            <Button
+              type="primary"
+              className="!text-xs mt-1"
+              style={{
+                backgroundColor: isAutoScroll ? "green" : "red",
+                borderColor: isAutoScroll ? "green" : "red"
+              }}
+              onClick={() => setIsAutoScroll(!isAutoScroll)}
+            >
+              {isAutoScroll ? "Turn Off Auto-Scroll" : "Turn On Auto-Scroll"}
+            </Button>
+          </div>
         </div>
       </div>
 

@@ -10,8 +10,7 @@ import {
   Divider,
   Image,
   Layout,
-  Pagination,
-  Carousel
+  message
 } from "antd";
 import { SafetyCertificateTwoTone } from "@ant-design/icons";
 import "./App.css";
@@ -24,56 +23,82 @@ const { Title, Text } = Typography;
 const App = () => {
   const [players, setPlayers] = useState([]);
   const [loading, setLoading] = useState(true);
-  const pageSize = 9; // Increased the number of profiles per page
-  const cardsPerRow = 3; // Each row contains 3 cards
-  const timeoutRef = useRef(null); // Store timeout ID
+  const [isAutoScroll, setIsAutoScroll] = useState(true); // Default: Auto-Scroll ON
+  const timeoutRef = useRef(null);
 
-  const fetchData = () => {
-    axios
-      .get("http://localhost:8000/sendDRIData")
-      .then((response) => {
-        if (response.data.status === "success") {
-          setPlayers(response.data.data);
-        }
-      })
-      .catch((error) => console.error("Error fetching player data:", error))
-      .finally(() => setLoading(false));
-
-    // Schedule next fetch in 2 minutes
-    timeoutRef.current = setTimeout(fetchData, 2 * 60 * 1000);
-  };
-
+  // Auto Scroll Effect with Toggle
   useEffect(() => {
-    fetchData(); // Initial call
+    if (!isAutoScroll) return; // If disabled, do nothing
 
-    return () => clearTimeout(timeoutRef.current); // Cleanup on unmount
+    let scrollInterval;
+    let scrollStep = 2; // Adjust speed (higher = faster)
+    let scrollDelay = 50; // Delay between each scroll step (ms)
+
+    const startAutoScroll = () => {
+      scrollInterval = setInterval(() => {
+        if (
+          window.innerHeight + window.scrollY >=
+          document.body.scrollHeight - 10
+        ) {
+          window.scrollTo({ top: 0, behavior: "auto" }); // Instantly go to the top
+        } else {
+          window.scrollBy({ top: scrollStep, behavior: "smooth" });
+        }
+      }, scrollDelay);
+    };
+
+    startAutoScroll();
+
+    return () => clearInterval(scrollInterval); // Cleanup on unmount
+  }, [isAutoScroll]); // Runs when `isAutoScroll` changes
+  useEffect(() => {
+    const fetchData = () => {
+      axios
+        .get("http://localhost:8000/sendDRIData")
+        .then((response) => {
+          if (response.data.status === "success") {
+            setPlayers(response.data.data);
+            message.success("Data Refresh Success");
+            console.log(
+              "✅ Data fetched successfully at:",
+              new Date().toLocaleTimeString()
+            );
+          }
+        })
+        .catch((error) => {
+          console.error("❌ Error fetching player data:", error);
+          message.error("Failed to refresh data");
+        })
+        .finally(() => setLoading(false));
+    };
+
+    fetchData(); // Initial Call
+
+    // Auto-fetch every 2 minutes
+    const intervalId = setInterval(fetchData, 2 * 60 * 1000);
+
+    return () => clearInterval(intervalId); // Cleanup on unmount
   }, []);
 
-  // Grouping players into rows of 3
-  const groupedPlayers = [];
-  for (let i = 0; i < players.length; i += cardsPerRow) {
-    groupedPlayers.push(players.slice(i, i + cardsPerRow));
-  }
-
   const shiftCounts = {
-    A: players?.filter((player) => player.shift === "A").length,
-    B: players?.filter((player) => player.shift === "B").length,
-    C: players?.filter((player) => player.shift === "C").length,
-    G: players?.filter((player) => player.shift === "G").length
+    A: players.filter((player) => player.shift === "A").length,
+    B: players.filter((player) => player.shift === "B").length,
+    C: players.filter((player) => player.shift === "C").length,
+    G: players.filter((player) => player.shift === "G").length
   };
 
   return (
     <Layout style={{ minHeight: "100vh" }}>
-      <Navbar />
+      <Navbar isAutoScroll={isAutoScroll} setIsAutoScroll={setIsAutoScroll} />
       <Content
-        className="stat-container flex w-screen !py-16  flex-col items-center"
+        className="stat-container flex w-screen  flex-col items-center"
         style={{
           background: "linear-gradient(to bottom, #000428, #004e92)",
           padding: "15px"
         }}
       >
         <Card
-          className="stat-card "
+          className="stat-card"
           bordered={false}
           style={{
             padding: 15,
@@ -101,8 +126,9 @@ const App = () => {
                 style={{ color: "#ddd" }}
                 className="!text-xs uppercase font-semibold"
               >
-                <div className="flex gap-5">
-                  Total Employees: {players.length} <span>||</span>
+                <div className="flex gap-5 text-sm">
+                  Date: {players[0]?.date || "N/A"} <span>||</span> Total
+                  Employees: {players.length} <span>||</span>
                   {shiftCounts.A > 0 && (
                     <>
                       A Shift: {shiftCounts.A} <span>||</span>
@@ -138,123 +164,94 @@ const App = () => {
             </div>
           ) : (
             <>
-              {/* FULL PAGE CAROUSEL VIEW (Each Slide = 1 Row) */}
-              <Carousel autoplay autoplaySpeed={5000} dotPosition="bottom">
-                {groupedPlayers.map((row, rowIndex) => (
-                  <div key={rowIndex}>
-                    <Row gutter={[24, 24]} justify="center">
-                      {row.map((player, index) => (
-                        <Col key={index} xs={24} sm={12} md={12} lg={8}>
-                          <Card
-                            bordered={false}
-                            style={{
-                              padding: 5,
-                              borderRadius: 16,
-                              background: "#24243e",
-                              color: "#fff",
-                              boxShadow: "0px 4px 12px rgba(0, 0, 0, 0.2)",
-                              textAlign: "center"
-                            }}
-                          >
-                            <Image
-                              src={"/logo.png"}
-                              alt="Player"
-                              preview={false}
-                              style={{
-                                width: "100%",
-                                maxWidth: "180px",
-                                borderRadius: "50%",
-                                border: "3px solid #FFD700",
-                                boxShadow: "0px 0px 10px rgba(255, 215, 0, 0.5)"
-                              }}
-                            />
-                            <h3
-                              className="text-lg mb-1.5"
-                              style={{
-                                color: "#FFD700",
-                                fontWeight: "bold",
-                                marginTop: 5
-                              }}
-                            >
-                              {player.Name}
-                            </h3>
-                            <div className="my-4">
-                              <h1
-                                className="!text-xs italic overflow-hidden text-ellipsis"
-                                style={{
-                                  display: "-webkit-box",
-                                  WebkitLineClamp: 2, // Limits the text to 2 lines
-                                  WebkitBoxOrient: "vertical",
-                                  height: "36px", // Fixed height (Adjust as needed)
-                                  overflow: "hidden",
-                                  textOverflow: "ellipsis",
-                                  whiteSpace: "normal" // Allows text wrapping
-                                }}
-                              >
-                                <span className="font-bold">{player.Name}</span>{" "}
-                                {desc[Math.floor(Math.random() * desc.length)]}
-                              </h1>
-                            </div>
-                            <Tag
-                              color="blue"
-                              className="tracking-wide absolute top-2 uppercase font-semibold text-center right-1"
-                              style={{
-                                fontSize: 12,
-                                padding: "4px 6px",
-                                borderRadius: 8
-                              }}
-                            >
-                              Employee Code
-                              <h1>{player.EmployeeCode}</h1>
-                            </Tag>
-                            <Row
-                              gutter={[5, 5]}
-                              style={{ marginTop: 10, textAlign: "left" }}
-                            >
-                              <Col span={24}>
-                                <Text
-                                  strong
-                                  style={{ fontSize: 16, color: "#fff" }}
-                                >
-                                  DEPARTMENT :
-                                </Text>{" "}
-                                <Text
-                                  className="!tracking-wide"
-                                  style={{ fontSize: 16, color: "#fff" }}
-                                >
-                                  DRI
-                                </Text>{" "}
-                              </Col>
-                              <Col span={24}>
-                                <Text
-                                  strong
-                                  style={{ fontSize: 16, color: "#fff" }}
-                                >
-                                  SHIFT :
-                                </Text>{" "}
-                                <Text style={{ fontSize: 16, color: "#fff" }}>
-                                  {player.shift}
-                                </Text>{" "}
-                              </Col>
-                              <Col span={24}>
-                                <Text
-                                  strong
-                                  style={{ fontSize: 16, color: "#fff" }}
-                                >
-                                  CONTACT :
-                                </Text>{" "}
-                                <Text style={{ fontSize: 16, color: "#fff" }}>
-                                  {player.MobileNo}
-                                </Text>{" "}
-                              </Col>
-                            </Row>
-                          </Card>
+              {/* FULL PAGE GRID VIEW (Without Carousel) */}
+              <Row gutter={[24, 24]} justify="center">
+                {players.map((player, index) => (
+                  <Col key={index} xs={24} sm={12} md={12} lg={8}>
+                    <Card
+                      className="border-blue-500"
+                      style={{
+                        padding: 5,
+                        borderRadius: 16,
+                        background: "#24243e",
+                        color: "#fff",
+                        boxShadow: "0px 4px 12px rgba(0, 0, 0, 0.2)",
+                        textAlign: "center"
+                      }}
+                    >
+                      <Image
+                        src={"/logo.png"}
+                        alt="Player"
+                        preview={false}
+                        style={{
+                          width: "100%",
+                          maxWidth: "130px",
+                          borderRadius: "50%",
+                          border: "3px solid #FFD700",
+                          boxShadow: "0px 0px 10px rgba(255, 215, 0, 0.5)"
+                        }}
+                      />
+                      <h3
+                        className="text-xl mb-1.5"
+                        style={{
+                          color: "#FFD700",
+                          fontWeight: "bold",
+                          marginTop: 5
+                        }}
+                      >
+                        {player.Name}
+                      </h3>
+                      <div className="my-4">
+                        <h1 className="!text-base italic font-semibold tracking-wide overflow-hidden text-ellipsis">
+                          <span className="font-bold">{player.Name}</span>{" "}
+                          {desc[Math.floor(Math.random() * desc.length)]}
+                        </h1>
+                      </div>
+                      <Tag
+                        color="blue"
+                        className="tracking-wide absolute top-2 uppercase font-semibold text-center right-1"
+                        style={{
+                          fontSize: 12,
+                          padding: "4px 6px",
+                          borderRadius: 8
+                        }}
+                      >
+                        Employee Code
+                        <h1>{player.EmployeeCode}</h1>
+                      </Tag>
+                      <Row
+                        gutter={[5, 5]}
+                        style={{ marginTop: 10, textAlign: "left" }}
+                      >
+                        <Col span={24}>
+                          <Text strong style={{ fontSize: 16, color: "#fff" }}>
+                            DEPARTMENT :
+                          </Text>{" "}
+                          <Text style={{ fontSize: 16, color: "#fff" }}>
+                            DRI
+                          </Text>
                         </Col>
-                      ))}
-                    </Row>
-                  </div>
+                        <Col span={24}>
+                          <Text strong style={{ fontSize: 16, color: "#fff" }}>
+                            SHIFT :
+                          </Text>{" "}
+                          <Text style={{ fontSize: 16, color: "#fff" }}>
+                            {player.shift}
+                          </Text>
+                        </Col>
+                        <Col span={24}>
+                          <Text strong style={{ fontSize: 16, color: "#fff" }}>
+                            CONTACT :
+                          </Text>{" "}
+                          <Text style={{ fontSize: 16, color: "#fff" }}>
+                            {player.MobileNo}
+                          </Text>
+                        </Col>
+                      </Row>
+                    </Card>
+                  </Col>
                 ))}
-              </Carousel>
+              </Row>
             </>
           )}
         </Card>
