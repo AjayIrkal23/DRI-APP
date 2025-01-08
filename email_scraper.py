@@ -31,6 +31,8 @@ def setup_driver():
     print("Outlook Web launched... Please log in if required.")
     return driver
 
+
+
 def get_current_shift():
     """Determines the current shift based on system time."""
     current_hour = datetime.now().hour
@@ -40,6 +42,12 @@ def get_current_shift():
         return "B"
     else:
         return "C"  # Night Shift
+
+
+
+# Example usage
+print(get_current_shift())
+
 
 def fetch_email_by_subject(driver, subject, today_date, shift):
     """Searches for an email by subject and extracts table data."""
@@ -140,9 +148,11 @@ if __name__ == "__main__":
             shift = get_current_shift()
 
             email_subject = f"DRI Rakshak Hazir {today_date} and Shift is:{shift}"
+            email_subject2 = f"DRI Rakshak Hazir {today_date} and Shift is:G"
             print(f"Checking for email: {email_subject}")
 
             table_data = fetch_email_by_subject(driver, email_subject, today_date, shift)
+            table_data2 = fetch_email_by_subject(driver, email_subject2, today_date, "G")
 
             if table_data:
                 print("Email found! Inserting data into MongoDB...")
@@ -150,8 +160,15 @@ if __name__ == "__main__":
             else:
                 print("Email not found. Retrying in 1 minute...")
 
+            if table_data2:
+                print("Email found G! Inserting data into MongoDB...")
+                insert_to_mongodb(mongo_collection, table_data2)
+            else:
+                print("Email not found G. Retrying in 1 minute...")
+
             sleep(60)  # Wait for 1 minute before checking again
 
     except KeyboardInterrupt:
         print("Script stopped manually.")
         driver.quit()
+        

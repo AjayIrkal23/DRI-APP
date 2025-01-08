@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useRef, useState } from "react";
 import axios from "axios";
 import {
   Card,
@@ -6,23 +6,31 @@ import {
   Row,
   Col,
   Tag,
-  Carousel,
   Spin,
   Divider,
-  Image
+  Image,
+  Layout,
+  Pagination,
+  Carousel
 } from "antd";
-import { SafetyCertificateTwoTone, TrophyOutlined } from "@ant-design/icons";
+import { SafetyCertificateTwoTone } from "@ant-design/icons";
 import "./App.css";
+import { desc } from "./utils/utils";
+import Navbar from "./components/Navbar";
 
+const { Content } = Layout;
 const { Title, Text } = Typography;
 
 const App = () => {
   const [players, setPlayers] = useState([]);
   const [loading, setLoading] = useState(true);
+  const pageSize = 9; // Increased the number of profiles per page
+  const cardsPerRow = 3; // Each row contains 3 cards
+  const timeoutRef = useRef(null); // Store timeout ID
 
-  useEffect(() => {
+  const fetchData = () => {
     axios
-      .get("http://127.0.0.1:8000/sendDRIData")
+      .get("http://localhost:8000/sendDRIData")
       .then((response) => {
         if (response.data.status === "success") {
           setPlayers(response.data.data);
@@ -30,194 +38,228 @@ const App = () => {
       })
       .catch((error) => console.error("Error fetching player data:", error))
       .finally(() => setLoading(false));
+
+    // Schedule next fetch in 2 minutes
+    timeoutRef.current = setTimeout(fetchData, 2 * 60 * 1000);
+  };
+
+  useEffect(() => {
+    fetchData(); // Initial call
+
+    return () => clearTimeout(timeoutRef.current); // Cleanup on unmount
   }, []);
 
+  // Grouping players into rows of 3
+  const groupedPlayers = [];
+  for (let i = 0; i < players.length; i += cardsPerRow) {
+    groupedPlayers.push(players.slice(i, i + cardsPerRow));
+  }
+
+  const shiftCounts = {
+    A: players?.filter((player) => player.shift === "A").length,
+    B: players?.filter((player) => player.shift === "B").length,
+    C: players?.filter((player) => player.shift === "C").length,
+    G: players?.filter((player) => player.shift === "G").length
+  };
+
   return (
-    <div
-      className="stat-container flex justify-center w-screen min-h-screen flex-col items-center"
-      style={{
-        background: "linear-gradient(to bottom, #000428, #004e92)",
-        padding: "40px 20px"
-      }}
-    >
-      <Row justify="space-between w-full absolute top-3 px-3">
-        <Col className="bg-white rounded-md  w-[220px] flex justify-center">
-          <Image
-            src="/jsw.png"
-            alt="JSW Logo"
-            className="p-1 object-contain"
-            preview={false}
-            style={{ height: 90 }}
-          />
-        </Col>
-        <Col className="bg-white rounded-md !w-[220px]">
-          <Image
-            src="/doclogo.jpg"
-            className="object-contain"
-            alt="Your Logo"
-            preview={false}
-            style={{ height: 90 }}
-          />
-        </Col>
-      </Row>
-      <Card
-        className="stat-card"
-        bordered={false}
+    <Layout style={{ minHeight: "100vh" }}>
+      <Navbar />
+      <Content
+        className="stat-container flex w-screen !py-16  flex-col items-center"
         style={{
-          padding: 32,
-          borderRadius: 20,
-          boxShadow: "0px 8px 20px rgba(0, 0, 0, 0.3)",
-          width: "100%",
-          maxWidth: "950px",
-          background: "#1b1b3a",
-          color: "#fff"
+          background: "linear-gradient(to bottom, #000428, #004e92)",
+          padding: "15px"
         }}
       >
-        {/* HEADER WITH LOGOS AT CORNER */}
-        <Row
-          justify="space-between"
-          align="middle"
-          style={{ marginBottom: 20 }}
+        <Card
+          className="stat-card "
+          bordered={false}
+          style={{
+            padding: 15,
+            borderRadius: 20,
+            boxShadow: "0px 8px 20px rgba(0, 0, 0, 0.3)",
+            width: "100%",
+            background: "#1b1b3a",
+            color: "#fff"
+          }}
         >
-          <Col span={9}>
-            <Title
-              level={3}
-              className="title uppercase"
-              style={{ color: "#FFD700", fontWeight: "bold" }}
-            >
-              DRI Rakshak Hazir
-            </Title>
-            <Text
-              style={{ color: "#ddd", fontSize: 16 }}
-              className="uppercase tracking-wide font-semibold !text-sm"
-            >
-              Date: {players[0]?.date || "N/A"} | Shift:{" "}
-              {players[0]?.shift || "N/A"}
-            </Text>
-          </Col>
-          <Col span={4} style={{ textAlign: "right" }}>
-            <SafetyCertificateTwoTone
-              style={{ fontSize: 60, color: "#FFD700" }}
-            />
-          </Col>
-        </Row>
+          {/* HEADER WITH SAFETY ICON */}
+          <Row
+            justify="space-between"
+            align="middle"
+            style={{ marginBottom: 20 }}
+          >
+            <Col span={9}>
+              <h1
+                className="title uppercase !text-2xl pb-2"
+                style={{ color: "#FFD700", fontWeight: "bold" }}
+              >
+                DRI Rakshak
+              </h1>
+              <Text
+                style={{ color: "#ddd" }}
+                className="!text-xs uppercase font-semibold"
+              >
+                <div className="flex gap-5">
+                  Total Employees: {players.length} <span>||</span>
+                  {shiftCounts.A > 0 && (
+                    <>
+                      A Shift: {shiftCounts.A} <span>||</span>
+                    </>
+                  )}
+                  {shiftCounts.B > 0 && (
+                    <>
+                      B Shift: {shiftCounts.B} <span>||</span>
+                    </>
+                  )}
+                  {shiftCounts.C > 0 && (
+                    <>
+                      C Shift: {shiftCounts.C} <span>||</span>
+                    </>
+                  )}
+                  {shiftCounts.G > 0 && <>G Shift: {shiftCounts.G}</>}
+                </div>
+              </Text>
+            </Col>
+            <Col span={4} style={{ textAlign: "right" }}>
+              <SafetyCertificateTwoTone
+                style={{ fontSize: 60, color: "#FFD700" }}
+              />
+            </Col>
+          </Row>
 
-        <Divider style={{ borderColor: "#fff", opacity: 0.2 }} />
+          <Divider style={{ borderColor: "#fff", opacity: 0.2 }} />
 
-        {/* LOADING STATE */}
-        {loading ? (
-          <div className="flex justify-center items-center py-10">
-            <Spin size="large" />
-          </div>
-        ) : players.length > 0 ? (
-          <Carousel autoplay autoplaySpeed={5000} dotPosition="bottom">
-            {players.map((player, index) => (
-              <div key={index} style={{ padding: 20 }}>
-                <Card
-                  bordered={false}
-                  style={{
-                    padding: 30,
-                    borderRadius: 16,
-                    background: "#24243e",
-                    color: "#fff",
-                    boxShadow: "0px 4px 12px rgba(0, 0, 0, 0.2)"
-                  }}
-                >
-                  <Row align="middle" gutter={[20, 20]}>
-                    {/* PLAYER IMAGE */}
-                    <Col span={9} style={{ textAlign: "center" }} className="">
-                      <Image
-                        src={"/logo.png"}
-                        alt="Player"
-                        preview={false}
-                        className=""
-                        style={{
-                          width: "100%",
-                          maxWidth: "220px",
-                          borderRadius: "50%",
-                          border: "3px solid #FFD700",
-                          boxShadow: "0px 0px 10px rgba(255, 215, 0, 0.5)"
-                        }}
-                      />
-                    </Col>
-
-                    {/* PLAYER INFORMATION */}
-                    <Col span={15} className="player-info">
-                      <Title
-                        level={3}
-                        className="player-name !mb-1"
-                        style={{ color: "#FFD700", fontWeight: "bold" }}
-                      >
-                        {player.Name}
-                      </Title>
-                      <div className="mb-2">
-                        <h1 className="text-xs">
-                          {" "}
-                          JSW's Special Training for DRI (Direct Reduced Iron)
-                          focuses on enhancing workforce expertise in ironmaking
-                          operations while ensuring safety and efficiency.
-                        </h1>
-                      </div>
-                      <Tag
-                        color="gold"
-                        style={{
-                          fontSize: 14,
-                          padding: "4px 8px",
-                          borderRadius: 8
-                        }}
-                      >
-                        Employee Code: {player.EmployeeCode}
-                      </Tag>
-
-                      <Row gutter={[16, 16]} style={{ marginTop: 10 }}>
-                        <Col span={12}>
-                          <Text strong style={{ fontSize: 16, color: "#fff" }}>
-                            AGE :
-                          </Text>{" "}
-                          27
+          {/* LOADING STATE */}
+          {loading ? (
+            <div className="flex justify-center items-center py-10">
+              <Spin size="large" />
+            </div>
+          ) : (
+            <>
+              {/* FULL PAGE CAROUSEL VIEW (Each Slide = 1 Row) */}
+              <Carousel autoplay autoplaySpeed={5000} dotPosition="bottom">
+                {groupedPlayers.map((row, rowIndex) => (
+                  <div key={rowIndex}>
+                    <Row gutter={[24, 24]} justify="center">
+                      {row.map((player, index) => (
+                        <Col key={index} xs={24} sm={12} md={12} lg={8}>
+                          <Card
+                            bordered={false}
+                            style={{
+                              padding: 5,
+                              borderRadius: 16,
+                              background: "#24243e",
+                              color: "#fff",
+                              boxShadow: "0px 4px 12px rgba(0, 0, 0, 0.2)",
+                              textAlign: "center"
+                            }}
+                          >
+                            <Image
+                              src={"/logo.png"}
+                              alt="Player"
+                              preview={false}
+                              style={{
+                                width: "100%",
+                                maxWidth: "180px",
+                                borderRadius: "50%",
+                                border: "3px solid #FFD700",
+                                boxShadow: "0px 0px 10px rgba(255, 215, 0, 0.5)"
+                              }}
+                            />
+                            <h3
+                              className="text-lg mb-1.5"
+                              style={{
+                                color: "#FFD700",
+                                fontWeight: "bold",
+                                marginTop: 5
+                              }}
+                            >
+                              {player.Name}
+                            </h3>
+                            <div className="my-4">
+                              <h1
+                                className="!text-xs italic overflow-hidden text-ellipsis"
+                                style={{
+                                  display: "-webkit-box",
+                                  WebkitLineClamp: 2, // Limits the text to 2 lines
+                                  WebkitBoxOrient: "vertical",
+                                  height: "36px", // Fixed height (Adjust as needed)
+                                  overflow: "hidden",
+                                  textOverflow: "ellipsis",
+                                  whiteSpace: "normal" // Allows text wrapping
+                                }}
+                              >
+                                <span className="font-bold">{player.Name}</span>{" "}
+                                {desc[Math.floor(Math.random() * desc.length)]}
+                              </h1>
+                            </div>
+                            <Tag
+                              color="blue"
+                              className="tracking-wide absolute top-2 uppercase font-semibold text-center right-1"
+                              style={{
+                                fontSize: 12,
+                                padding: "4px 6px",
+                                borderRadius: 8
+                              }}
+                            >
+                              Employee Code
+                              <h1>{player.EmployeeCode}</h1>
+                            </Tag>
+                            <Row
+                              gutter={[5, 5]}
+                              style={{ marginTop: 10, textAlign: "left" }}
+                            >
+                              <Col span={24}>
+                                <Text
+                                  strong
+                                  style={{ fontSize: 16, color: "#fff" }}
+                                >
+                                  DEPARTMENT :
+                                </Text>{" "}
+                                <Text
+                                  className="!tracking-wide"
+                                  style={{ fontSize: 16, color: "#fff" }}
+                                >
+                                  DRI
+                                </Text>{" "}
+                              </Col>
+                              <Col span={24}>
+                                <Text
+                                  strong
+                                  style={{ fontSize: 16, color: "#fff" }}
+                                >
+                                  SHIFT :
+                                </Text>{" "}
+                                <Text style={{ fontSize: 16, color: "#fff" }}>
+                                  {player.shift}
+                                </Text>{" "}
+                              </Col>
+                              <Col span={24}>
+                                <Text
+                                  strong
+                                  style={{ fontSize: 16, color: "#fff" }}
+                                >
+                                  CONTACT :
+                                </Text>{" "}
+                                <Text style={{ fontSize: 16, color: "#fff" }}>
+                                  {player.MobileNo}
+                                </Text>{" "}
+                              </Col>
+                            </Row>
+                          </Card>
                         </Col>
-                        <Col span={12}>
-                          <Text strong style={{ fontSize: 16, color: "#fff" }}>
-                            DEPARTMENT :
-                          </Text>{" "}
-                          DRI
-                        </Col>
-                      </Row>
-                      <Row
-                        gutter={[16, 16]}
-                        style={{ marginTop: 5 }}
-                        className="uppercase"
-                      >
-                        <Col span={12}>
-                          <Text strong style={{ fontSize: 16, color: "#fff" }}>
-                            Speciality :
-                          </Text>{" "}
-                          Machines
-                        </Col>
-                        <Col span={12}>
-                          <Text strong style={{ fontSize: 16, color: "#fff" }}>
-                            Contact :
-                          </Text>{" "}
-                          {player.MobileNo}
-                        </Col>
-                      </Row>
-                    </Col>
-                  </Row>
-                </Card>
-              </div>
-            ))}
-          </Carousel>
-        ) : (
-          <div className="flex justify-center items-center py-10">
-            <Text strong style={{ fontSize: 20, color: "#888" }}>
-              No Data Available
-            </Text>
-          </div>
-        )}
-
-        {/* FOOTER LOGOS AT CORNER */}
-      </Card>
-    </div>
+                      ))}
+                    </Row>
+                  </div>
+                ))}
+              </Carousel>
+            </>
+          )}
+        </Card>
+      </Content>
+    </Layout>
   );
 };
 
