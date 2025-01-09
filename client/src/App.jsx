@@ -25,6 +25,26 @@ const App = () => {
   const [loading, setLoading] = useState(true);
   const [isAutoScroll, setIsAutoScroll] = useState(true); // Default: Auto-Scroll ON
   const timeoutRef = useRef(null);
+  const [clickCount, setClickCount] = useState(0);
+
+  useEffect(() => {
+    const handleTripleClick = () => {
+      setClickCount((prev) => prev + 1);
+
+      setTimeout(() => {
+        setClickCount(0); // Reset after short delay
+      }, 1000);
+
+      if (clickCount >= 2) {
+        setIsAutoScroll((prev) => !prev);
+        message.info(`Auto-Scroll ${isAutoScroll ? "Disabled" : "Enabled"}`);
+        setClickCount(0); // Reset counter
+      }
+    };
+
+    document.addEventListener("click", handleTripleClick);
+    return () => document.removeEventListener("click", handleTripleClick);
+  }, [clickCount, isAutoScroll]);
 
   // Auto Scroll Effect with Toggle
   useEffect(() => {
@@ -51,6 +71,7 @@ const App = () => {
 
     return () => clearInterval(scrollInterval); // Cleanup on unmount
   }, [isAutoScroll]); // Runs when `isAutoScroll` changes
+
   useEffect(() => {
     const fetchData = () => {
       axios
