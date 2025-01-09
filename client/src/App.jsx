@@ -75,7 +75,7 @@ const App = () => {
   useEffect(() => {
     const fetchData = () => {
       axios
-        .get("http://localhost:8000/sendDRIData")
+        .get("http://172.30.16.65:8000/sendDRIData")
         .then((response) => {
           if (response.data.status === "success") {
             setPlayers(response.data.data);
@@ -201,7 +201,7 @@ const App = () => {
                       }}
                     >
                       <Image
-                        src={"/logo.png"}
+                        src={"/person.jpeg"}
                         alt="Player"
                         preview={false}
                         style={{
